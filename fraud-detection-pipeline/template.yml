@@ -1,0 +1,112 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Real-Time AML & Fraud Detection Pipeline - Day 1 Foundation
+
+Resources:
+  # -------------------------------------------------------------------------
+  # 1. DynamoDB Single Table
+  # -------------------------------------------------------------------------
+  TransactionGraphTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: TransactionGraph
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+        - AttributeName: GSI1PK
+          AttributeType: S
+        - AttributeName: GSI1SK
+          AttributeType: S
+        - AttributeName: GSI2PK
+          AttributeType: S
+        - AttributeName: GSI2SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: StatusIndex
+          KeySchema:
+            - AttributeName: GSI1PK
+              KeyType: HASH
+            - AttributeName: GSI1SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: PairIndex
+          KeySchema:
+            - AttributeName: GSI2PK
+              KeyType: HASH
+            - AttributeName: GSI2SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+
+  # -------------------------------------------------------------------------
+  # 2. API Gateway with Request Validation
+  # -------------------------------------------------------------------------
+  TransactionApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Models:
+        TransactionModel:
+          type: object
+          required:
+            - senderId
+            - receiverId
+            - amount
+            - currency
+          properties:
+            senderId:
+              type: string
+            receiverId:
+              type: string
+            amount:
+              type: number
+            currency:
+              type: string
+
+  # -------------------------------------------------------------------------
+  # 3. Ingestion Lambda
+  # -------------------------------------------------------------------------
+  IngestionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/ingestion/
+      Handler: app.lambda_handler
+      Runtime: python3.11
+#      Timeout: 5
+      Environment:
+        Variables:
+          Ingestion_Table: !Ref TransactionGraphTable
+          # WORKFLOW_ARN will be added in Day 2 for Step Functions
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TransactionGraphTable
+      Events:
+        PostTransaction:
+          Type: Api
+          Properties:
+            RestApiId: !Ref TransactionApi
+            Path: /transactions
+            Method: post
+            RequestModel:
+              Model: TransactionModel
+              Required: true
+              ValidateBody: true
+
+
+
+
+Outputs:
+  TransactionApiUrl:
+    Description: "API Gateway endpoint URL for Prod stage"
+    Value: !Sub "https://${TransactionApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/transactions"
