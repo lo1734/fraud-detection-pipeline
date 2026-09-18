@@ -77,20 +77,27 @@ Resources:
   # -------------------------------------------------------------------------
   # 3. Ingestion Lambda
   # -------------------------------------------------------------------------
+
   IngestionFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/ingestion/
       Handler: app.lambda_handler
       Runtime: python3.11
-#      Timeout: 5
+      Timeout: 15
       Environment:
         Variables:
-          Ingestion_Table: !Ref TransactionGraphTable
-          # WORKFLOW_ARN will be added in Day 2 for Step Functions
+          TABLE_NAME: !Ref TransactionGraphTable
+          WORKFLOW_ARN: !Ref FraudDetectionWorkflow
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref TransactionGraphTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - states:StartExecution
+                - states:StartSyncExecution
+              Resource: !Ref FraudDetectionWorkflow
       Events:
         PostTransaction:
           Type: Api
@@ -102,7 +109,6 @@ Resources:
               Model: TransactionModel
               Required: true
               ValidateBody: true
-
 
   # -------------------------------------------------------------------------
   # 4. Feature Extraction Lambda (Day 2)
@@ -163,6 +169,7 @@ Resources:
         FeatureExtractionFunctionArn: !GetAtt FeatureExtractionFunction.Arn
         GraphAnomalyScoringFunctionArn: !GetAtt GraphAnomalyScoringFunction.Arn
         BedrockExplanationFunctionArn: !GetAtt BedrockExplanationFunction.Arn
+        ComplianceAlertTopicArn: !Ref ComplianceAlertTopic
       Policies:
         - LambdaInvokePolicy:
             FunctionName: !Ref FeatureExtractionFunction
@@ -170,6 +177,16 @@ Resources:
             FunctionName: !Ref GraphAnomalyScoringFunction
         - LambdaInvokePolicy:
             FunctionName: !Ref BedrockExplanationFunction
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt ComplianceAlertTopic.TopicName
+
+  # -------------------------------------------------------------------------
+  # 8. SNS Compliance Alert Topic
+  # -------------------------------------------------------------------------
+  ComplianceAlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: AML-Compliance-Alerts
 
 Outputs:
   TransactionApiUrl:

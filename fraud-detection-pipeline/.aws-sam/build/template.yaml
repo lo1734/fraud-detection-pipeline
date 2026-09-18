@@ -71,14 +71,24 @@ Resources:
       CodeUri: IngestionFunction
       Handler: app.lambda_handler
       Runtime: python3.11
+      Timeout: 15
       Environment:
         Variables:
-          Ingestion_Table:
+          TABLE_NAME:
             Ref: TransactionGraphTable
+          WORKFLOW_ARN:
+            Ref: FraudDetectionWorkflow
       Policies:
       - DynamoDBCrudPolicy:
           TableName:
             Ref: TransactionGraphTable
+      - Statement:
+        - Effect: Allow
+          Action:
+          - states:StartExecution
+          - states:StartSyncExecution
+          Resource:
+            Ref: FraudDetectionWorkflow
       Events:
         PostTransaction:
           Type: Api
@@ -155,6 +165,8 @@ Resources:
           Fn::GetAtt:
           - BedrockExplanationFunction
           - Arn
+        ComplianceAlertTopicArn:
+          Ref: ComplianceAlertTopic
       Policies:
       - LambdaInvokePolicy:
           FunctionName:
@@ -165,6 +177,15 @@ Resources:
       - LambdaInvokePolicy:
           FunctionName:
             Ref: BedrockExplanationFunction
+      - SNSPublishMessagePolicy:
+          TopicName:
+            Fn::GetAtt:
+            - ComplianceAlertTopic
+            - TopicName
+  ComplianceAlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: AML-Compliance-Alerts
 Outputs:
   TransactionApiUrl:
     Description: API Gateway endpoint URL for Prod stage

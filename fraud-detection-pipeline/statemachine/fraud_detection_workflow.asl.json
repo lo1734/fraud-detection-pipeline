@@ -42,6 +42,17 @@
     "GenerateExplanation": {
       "Type": "Task",
       "Resource": "${BedrockExplanationFunctionArn}",
+      "Next": "PublishComplianceAlert"
+    },
+    "PublishComplianceAlert": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "${ComplianceAlertTopicArn}",
+        "Subject": "URGENT: AML Transaction Flagged",
+        "Message.$": "$.explanation"
+      },
+      "ResultPath": "$.snsResult",
       "Next": "FlagForReview"
     },
     "ApproveTransaction": {
