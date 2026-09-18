@@ -1,0 +1,66 @@
+{
+  "Comment": "AML Real-Time Graph Fraud Detection Pipeline",
+  "StartAt": "ExtractFeatures",
+  "States": {
+    "ExtractFeatures": {
+      "Type": "Task",
+      "Resource": "${FeatureExtractionFunctionArn}",
+      "Next": "ScoreAnomaly",
+      "Retry": [
+        {
+          "ErrorEquals": ["Lambda.ServiceException", "Lambda.AWSLambdaException", "Lambda.SdkClientException"],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 2,
+          "BackoffRate": 2.0
+        }
+      ]
+    },
+    "ScoreAnomaly": {
+      "Type": "Task",
+      "Resource": "${GraphAnomalyScoringFunctionArn}",
+      "Next": "CheckFlagged",
+      "Retry": [
+        {
+          "ErrorEquals": ["Lambda.ServiceException", "Lambda.AWSLambdaException", "Lambda.SdkClientException"],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 2,
+          "BackoffRate": 2.0
+        }
+      ]
+    },
+    "CheckFlagged": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.flagged",
+          "BooleanEquals": true,
+          "Next": "GenerateExplanation"
+        }
+      ],
+      "Default": "ApproveTransaction"
+    },
+    "GenerateExplanation": {
+      "Type": "Task",
+      "Resource": "${BedrockExplanationFunctionArn}",
+      "Next": "FlagForReview"
+    },
+    "ApproveTransaction": {
+      "Type": "Pass",
+      "Result": {
+        "status": "APPROVED",
+        "action": "NONE"
+      },
+      "ResultPath": "$.decision",
+      "End": true
+    },
+    "FlagForReview": {
+      "Type": "Pass",
+      "Result": {
+        "status": "FLAGGED",
+        "action": "HOLD_FOR_COMPLIANCE"
+      },
+      "ResultPath": "$.decision",
+      "End": true
+    }
+  }
+}

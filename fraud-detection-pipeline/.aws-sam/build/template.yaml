@@ -30,7 +30,7 @@ Resources:
         KeySchema:
         - AttributeName: GSI1PK
           KeyType: HASH
-        - AttributeName: GSI2SK
+        - AttributeName: GSI1SK
           KeyType: RANGE
         Projection:
           ProjectionType: ALL
@@ -93,3 +93,80 @@ Resources:
               ValidateBody: true
     Metadata:
       SamResourceId: IngestionFunction
+  FeatureExtractionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: FeatureExtractionFunction
+      Handler: app.lambda_handler
+      Runtime: python3.11
+      Timeout: 10
+      Environment:
+        Variables:
+          TABLE_NAME:
+            Ref: TransactionGraphTable
+      Policies:
+      - DynamoDBReadPolicy:
+          TableName:
+            Ref: TransactionGraphTable
+    Metadata:
+      SamResourceId: FeatureExtractionFunction
+  GraphAnomalyScoringFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: GraphAnomalyScoringFunction
+      Handler: app.lambda_handler
+      Runtime: python3.11
+      Timeout: 5
+    Metadata:
+      SamResourceId: GraphAnomalyScoringFunction
+  BedrockExplanationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: BedrockExplanationFunction
+      Handler: app.lambda_handler
+      Runtime: python3.11
+      Timeout: 30
+      Environment:
+        Variables:
+          BEDROCK_MODEL_ID: amazon.nova-pro-v1:0
+      Policies:
+      - Statement:
+        - Effect: Allow
+          Action:
+          - bedrock:InvokeModel
+          Resource: '*'
+    Metadata:
+      SamResourceId: BedrockExplanationFunction
+  FraudDetectionWorkflow:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Type: EXPRESS
+      DefinitionUri: ../../statemachine/fraud_detection_workflow.asl.json
+      DefinitionSubstitutions:
+        FeatureExtractionFunctionArn:
+          Fn::GetAtt:
+          - FeatureExtractionFunction
+          - Arn
+        GraphAnomalyScoringFunctionArn:
+          Fn::GetAtt:
+          - GraphAnomalyScoringFunction
+          - Arn
+        BedrockExplanationFunctionArn:
+          Fn::GetAtt:
+          - BedrockExplanationFunction
+          - Arn
+      Policies:
+      - LambdaInvokePolicy:
+          FunctionName:
+            Ref: FeatureExtractionFunction
+      - LambdaInvokePolicy:
+          FunctionName:
+            Ref: GraphAnomalyScoringFunction
+      - LambdaInvokePolicy:
+          FunctionName:
+            Ref: BedrockExplanationFunction
+Outputs:
+  TransactionApiUrl:
+    Description: API Gateway endpoint URL for Prod stage
+    Value:
+      Fn::Sub: https://${TransactionApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/transactions
