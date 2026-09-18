@@ -1,6 +1,12 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: Real-Time AML & Fraud Detection Pipeline - Day 1 Foundation
+Description: Real-Time AML & Fraud Detection Pipeline - Production Ready
+Globals:
+  Function:
+    Tracing: Active
+    Timeout: 10
+  Api:
+    TracingEnabled: true
 Resources:
   TransactionGraphTable:
     Type: AWS::DynamoDB::Table
@@ -101,6 +107,13 @@ Resources:
               Model: TransactionModel
               Required: true
               ValidateBody: true
+        GetAlerts:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: TransactionApi
+            Path: /alerts
+            Method: get
     Metadata:
       SamResourceId: IngestionFunction
   FeatureExtractionFunction:
@@ -186,8 +199,46 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       TopicName: AML-Compliance-Alerts
+  Api5xxAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: High 5XX error rate on Fraud Detection API
+      MetricName: 5XXError
+      Namespace: AWS/ApiGateway
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+      - Name: ApiName
+        Value:
+          Ref: TransactionApi
+  WorkflowFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Step Function Execution Failures
+      MetricName: ExecutionsFailed
+      Namespace: AWS/States
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+      - Name: StateMachineArn
+        Value:
+          Ref: FraudDetectionWorkflow
 Outputs:
   TransactionApiUrl:
     Description: API Gateway endpoint URL for Prod stage
     Value:
       Fn::Sub: https://${TransactionApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/transactions
+  AlertsApiUrl:
+    Description: Endpoint URL to fetch recent flagged transactions
+    Value:
+      Fn::Sub: https://${TransactionApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/alerts
+  ComplianceTopicArn:
+    Description: ARN for the SNS Compliance Alerts Topic
+    Value:
+      Ref: ComplianceAlertTopic

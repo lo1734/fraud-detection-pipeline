@@ -1,6 +1,13 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: Real-Time AML & Fraud Detection Pipeline - Day 1 Foundation
+Description: Real-Time AML & Fraud Detection Pipeline - Production Ready
+
+Globals:
+  Function:
+    Tracing: Active
+    Timeout: 10
+  Api:
+    TracingEnabled: true
 
 Resources:
   # -------------------------------------------------------------------------
@@ -75,9 +82,8 @@ Resources:
               type: string
 
   # -------------------------------------------------------------------------
-  # 3. Ingestion Lambda
+  # 3. Ingestion & Alerts Lambda
   # -------------------------------------------------------------------------
-
   IngestionFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -109,9 +115,15 @@ Resources:
               Model: TransactionModel
               Required: true
               ValidateBody: true
+        GetAlerts:
+          Type: Api
+          Properties:
+            RestApiId: !Ref TransactionApi
+            Path: /alerts
+            Method: get
 
   # -------------------------------------------------------------------------
-  # 4. Feature Extraction Lambda (Day 2)
+  # 4. Feature Extraction Lambda
   # -------------------------------------------------------------------------
   FeatureExtractionFunction:
     Type: AWS::Serverless::Function
@@ -126,6 +138,7 @@ Resources:
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref TransactionGraphTable
+
   # -------------------------------------------------------------------------
   # 5. Graph Anomaly Scoring Lambda
   # -------------------------------------------------------------------------
@@ -149,7 +162,7 @@ Resources:
       Timeout: 30
       Environment:
         Variables:
-           BEDROCK_MODEL_ID: amazon.nova-pro-v1:0
+          BEDROCK_MODEL_ID: amazon.nova-pro-v1:0
       Policies:
         - Statement:
             - Effect: Allow
@@ -188,7 +201,46 @@ Resources:
     Properties:
       TopicName: AML-Compliance-Alerts
 
+  # -------------------------------------------------------------------------
+  # 9. CloudWatch Alarms (SRE Hardening)
+  # -------------------------------------------------------------------------
+  Api5xxAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: "High 5XX error rate on Fraud Detection API"
+      MetricName: 5XXError
+      Namespace: AWS/ApiGateway
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: ApiName
+          Value: !Ref TransactionApi
+
+  WorkflowFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: "Step Function Execution Failures"
+      MetricName: ExecutionsFailed
+      Namespace: AWS/States
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: StateMachineArn
+          Value: !Ref FraudDetectionWorkflow
+
 Outputs:
   TransactionApiUrl:
     Description: "API Gateway endpoint URL for Prod stage"
     Value: !Sub "https://${TransactionApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/transactions"
+  AlertsApiUrl:
+    Description: "Endpoint URL to fetch recent flagged transactions"
+    Value: !Sub "https://${TransactionApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/alerts"
+  ComplianceTopicArn:
+    Description: "ARN for the SNS Compliance Alerts Topic"
+    Value: !Ref ComplianceAlertTopic

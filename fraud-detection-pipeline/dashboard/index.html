@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>AML Real-Time Monitoring</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; padding: 2rem; }
+    h1 { color: #38bdf8; }
+    .card { background: #1e293b; border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem; border-left: 5px solid #22c55e; }
+    .flagged { border-left-color: #ef4444; }
+    .badge { display: inline-block; padding: 0.25rem 0.5rem; border-radius: 4px; font-weight: bold; font-size: 0.8rem; }
+    .badge-clear { background: #14532d; color: #86efac; }
+    .badge-flagged { background: #7f1d1d; color: #fca5a5; }
+    pre { background: #0f172a; padding: 0.75rem; border-radius: 4px; overflow-x: auto; font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <h1>Real-Time AML Transaction Stream</h1>
+  <div id="feed">Waiting for transactions...</div>
+
+  <script>
+    // Point this to an endpoint returning recent GSI1 transactions or simulate feed
+    console.log("Dashboard loaded");
+  </script>
+</body>
+</html>

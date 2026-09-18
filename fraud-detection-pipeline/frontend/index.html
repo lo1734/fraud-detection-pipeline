@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Real-Time AML & Fraud Detection Monitor</title>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --surface: #111827;
+      --border: #1f2937;
+      --text: #f9fafb;
+      --text-muted: #9ca3af;
+      --accent: #38bdf8;
+      --danger: #ef4444;
+      --success: #10b981;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 2rem;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    h1 { margin: 0; font-size: 1.5rem; color: var(--accent); }
+    .status-badge {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--success);
+      padding: 0.4rem 0.8rem;
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .status-badge::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+    }
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+    }
+    .panel h2 {
+      margin-top: 0;
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
+      color: var(--text);
+    }
+    .form-group {
+      margin-bottom: 1rem;
+    }
+    label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 0.4rem;
+    }
+    input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.6rem;
+      color: var(--text);
+      font-size: 0.9rem;
+      box-sizing: border-box;
+    }
+    .btn-group {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+    button {
+      flex: 1;
+      padding: 0.7rem 1rem;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: opacity 0.2s;
+    }
+    button:hover { opacity: 0.9; }
+    .btn-clean { background: #2563eb; color: #fff; }
+    .btn-fraud { background: var(--danger); color: #fff; }
+    .feed {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+    .card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem;
+      font-size: 0.85rem;
+    }
+    .card.flagged { border-left-color: var(--danger); }
+    .card.approved { border-left-color: var(--success); }
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+    }
+    pre {
+      background: #06090e;
+      padding: 0.6rem;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 0.8rem;
+      color: #38bdf8;
+      margin: 0.5rem 0 0 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>Graph-Powered AML Monitoring Console</h1>
+      <p style="margin: 0.3rem 0 0 0; color: var(--text-muted); font-size: 0.9rem;">
+        API Gateway &rarr; Step Functions &rarr; DynamoDB Single-Table Graph &rarr; Bedrock Alerting
+      </p>
+    </div>
+    <div class="status-badge">Pipeline Active</div>
+  </div>
+
+  <div class="grid">
+    <!-- Simulator Panel -->
+    <div class="panel">
+      <h2>Transaction Simulator</h2>
+      <div class="form-group">
+        <label>Sender Account ID</label>
+        <input type="text" id="senderId" value="acc_user_1" />
+      </div>
+      <div class="form-group">
+        <label>Receiver Account ID</label>
+        <input type="text" id="receiverId" value="acc_merchant_1" />
+      </div>
+      <div class="form-group">
+        <label>Amount ($ USD)</label>
+        <input type="number" id="amount" value="45.00" />
+      </div>
+      <div class="btn-group">
+        <button class="btn-clean" onclick="sendTxn(false)">Send Clean Txn</button>
+        <button class="btn-fraud" onclick="sendTxn(true)">Inject Structuring Pattern</button>
+      </div>
+
+      <h2 style="margin-top: 1.5rem;">Pipeline Response</h2>
+      <div id="latest-response">
+        <p style="color: var(--text-muted); font-size: 0.9rem;">Execute a transaction above to view pipeline scoring and decision.</p>
+      </div>
+    </div>
+
+    <!-- Alert Stream Panel -->
+    <div class="panel">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2 style="margin: 0;">Flagged Audit Stream (GSI1)</h2>
+        <button onclick="fetchAlerts()" style="flex: none; padding: 0.3rem 0.7rem; font-size: 0.8rem; background: var(--border); color: var(--text);">Refresh</button>
+      </div>
+      <div class="feed" id="alerts-feed">Loading audit stream...</div>
+    </div>
+  </div>
+
+  <script>
+    // Injected endpoints
+    const API_URL = "https://nkke7hhukj.execute-api.us-east-1.amazonaws.com/Prod/transactions";
+    const ALERTS_URL = "https://nkke7hhukj.execute-api.us-east-1.amazonaws.com/Prod/alerts";
+
+    async function sendTxn(isFraud) {
+      const sender = isFraud ? "acc_user_999_FRAUD" : document.getElementById("senderId").value;
+      const receiver = isFraud ? "acc_merchant_999_FRAUD" : document.getElementById("receiverId").value;
+      const amount = isFraud ? 9850.00 : parseFloat(document.getElementById("amount").value);
+
+      const respContainer = document.getElementById("latest-response");
+      respContainer.innerHTML = '<p style="color: var(--accent);">Processing transaction through Step Functions...</p>';
+
+      try {
+        const res = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ senderId: sender, receiverId: receiver, amount: amount, currency: "USD" })
+        });
+        const data = await res.json();
+        const isFlagged = data.flagged;
+
+        respContainer.innerHTML = `
+          <div class="card ${isFlagged ? 'flagged' : 'approved'}">
+            <div class="card-top">
+              <span>${data.txnId}</span>
+              <span style="color: ${isFlagged ? 'var(--danger)' : 'var(--success)'}">${data.decision.status}</span>
+            </div>
+            <div>Anomaly Score: <strong>${data.score}</strong> | Action: <strong>${data.decision.action}</strong></div>
+            ${data.explanation ? `<pre>${JSON.stringify(data.explanation, null, 2)}</pre>` : ''}
+          </div>
+        `;
+        if (isFlagged) {
+          setTimeout(fetchAlerts, 1000);
+        }
+      } catch (err) {
+        respContainer.innerHTML = `<p style="color: var(--danger);">Error: ${err.message}</p>`;
+      }
+    }
+
+    async function fetchAlerts() {
+      const feed = document.getElementById("alerts-feed");
+      try {
+        const res = await fetch(ALERTS_URL);
+        const data = await res.json();
+        if (!data.length) {
+          feed.innerHTML = '<p style="color: var(--text-muted);">No flagged transactions found.</p>';
+          return;
+        }
+        feed.innerHTML = data.map(item => `
+          <div class="card flagged">
+            <div class="card-top">
+              <span>${item.PK}</span>
+              <span style="color: var(--danger);">$${item.amount.toFixed(2)} ${item.currency}</span>
+            </div>
+            <div>Sender: <code>${item.senderId}</code> &rarr; Receiver: <code>${item.receiverId}</code></div>
+            <div style="margin-top: 0.3rem; color: var(--text-muted); font-size: 0.75rem;">Recorded: ${new Date(item.timestamp).toLocaleTimeString()}</div>
+          </div>
+        `).join("");
+      } catch (err) {
+        feed.innerHTML = `<p style="color: var(--danger);">Failed to load alerts: ${err.message}</p>`;
+      }
+    }
+
+    fetchAlerts();
+  </script>
+</body>
+</html>

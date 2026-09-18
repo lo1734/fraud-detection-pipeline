@@ -58,7 +58,12 @@ def persist_transaction_graph(txn_id, sender_id, receiver_id, amount, currency, 
 
 def lambda_handler(event, context):
     try:
-        body = json.loads(event.get("body", "{}"))
+        http_method = event.get("httpMethod")
+        if http_method == "GET":
+            return handle_get_alerts()
+
+        raw_body = event.get("body") or "{}"
+        body = json.loads(raw_body)
 
         txn_id = body.get("txnId", f"txn_{uuid.uuid4().hex[:12]}")
         timestamp = body.get("timestamp", int(time.time() * 1000))
@@ -127,3 +132,27 @@ def lambda_handler(event, context):
             "headers": {"Content-Type": "application/json"},
             "body": json.dumps({"error": str(e)})
         }
+def handle_get_alerts():
+    """Queries StatusIndex (GSI1) for recent flagged transactions."""
+    response = table.query(
+        IndexName="StatusIndex",
+        KeyConditionExpression="GSI1PK = :status",
+        ExpressionAttributeValues={":status": "STATUS#FLAGGED"},
+        ScanIndexForward=False,
+        Limit=20
+    )
+    items = response.get("Items", [])
+    # Convert Decimals for JSON serialization
+    for item in items:
+        if "amount" in item:
+            item["amount"] = float(item["amount"])
+        if "timestamp" in item:
+            item["timestamp"] = int(item["timestamp"])
+    return {
+        "statusCode": 200,
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+        },
+        "body": json.dumps(items)
+    }
