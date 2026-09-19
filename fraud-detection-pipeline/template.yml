@@ -125,6 +125,12 @@ Resources:
             RestApiId: !Ref TransactionApi
             Path: /alerts
             Method: get
+        GetRoot:
+          Type: Api
+          Properties:
+            RestApiId: !Ref TransactionApi
+            Path: /
+            Method: get
 
   # -------------------------------------------------------------------------
   # 4. Feature Extraction Lambda
@@ -144,7 +150,7 @@ Resources:
             TableName: !Ref TransactionGraphTable
 
   # -------------------------------------------------------------------------
-  # 5. Graph Anomaly Scoring Lambda
+  # 5. Graph Anomaly Scoring Lambda (ML + Graph Ensemble)
   # -------------------------------------------------------------------------
   GraphAnomalyScoringFunction:
     Type: AWS::Serverless::Function
@@ -152,7 +158,27 @@ Resources:
       CodeUri: src/scoring/
       Handler: app.lambda_handler
       Runtime: python3.11
-      Timeout: 5
+      Timeout: 15
+      MemorySize: 512
+      Layers:
+        - !Ref FraudModelLayer
+      Environment:
+        Variables:
+          MODEL_JSON_PATH: /opt/ml/model/fraud_model.json
+          MODEL_PATH: /opt/ml/model/fraud_model.joblib
+          CONFIG_PATH: /opt/ml/model/feature_config.json
+
+  # -------------------------------------------------------------------------
+  # 5b. ML Model Lambda Layer
+  # -------------------------------------------------------------------------
+  FraudModelLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: fraud-detection-ml-model
+      Description: XGBoost model + dependencies for fraud scoring
+      CompatibleRuntimes:
+        - python3.11
+      ContentUri: model/layer/
 
   # -------------------------------------------------------------------------
   # 6. Bedrock Explanation Lambda

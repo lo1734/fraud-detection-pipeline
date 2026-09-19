@@ -71,7 +71,14 @@ def lambda_handler(event, context):
             "receiver_avg_in_amount": round(receiver_avg_in_amount, 2),
             "pair_tx_count": pair_count_recent,
             "pair_total_volume": round(pair_total_volume, 2),
-            "structuring_cluster_count": structuring_transfers
+            "structuring_cluster_count": structuring_transfers,
+            "amount_to_avg_ratio": round(current_amount / sender_avg_out_amount, 4) if sender_avg_out_amount > 0 else 0.0,
+            "is_high_value": 1 if current_amount > 200000 else 0,
+            "transaction_type_numeric": event.get("transactionTypeNumeric", 4),  # Default: TRANSFER
+            "oldbalanceOrg": float(event.get("oldbalanceOrg", 0.0)),
+            "newbalanceOrig": float(event.get("newbalanceOrig", 0.0)),
+            "oldbalanceDest": float(event.get("oldbalanceDest", 0.0)),
+            "newbalanceDest": float(event.get("newbalanceDest", 0.0)),
         }
     }
 

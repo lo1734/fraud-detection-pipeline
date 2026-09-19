@@ -1,10 +1,16 @@
-# 🛡️ Real-Time AML & Fraud Detection Pipeline
+# 🛡️ SentinelAML: Real-Time AML & Fraud Detection Pipeline
 
-> A production-grade, serverless **Anti-Money Laundering (AML) & Fraud Detection** system built on AWS — powered by **DynamoDB graph modeling**, **Step Functions orchestration**, **heuristic anomaly scoring**, and **Amazon Bedrock (Nova Pro) AI explanations**.
+> A production-grade, serverless **Anti-Money Laundering (AML) & Fraud Detection** system built on AWS — powered by **DynamoDB single-table graph modeling**, **Step Functions Express orchestration**, **hybrid XGBoost ML + Graph anomaly scoring (AUC 0.999)**, and **Amazon Bedrock (Nova Pro) AI explanations**.
 
+[![WeMakeDevs Hackathon](https://img.shields.io/badge/WeMakeDevs-AWS%20First%20Commit-blueviolet?logo=amazon-aws)](#overview)
+[![Track](https://img.shields.io/badge/Track-Ship%20It%20(Deployed)-success)](https://nkke7hhukj.execute-api.us-east-1.amazonaws.com/Prod/)
 [![AWS SAM](https://img.shields.io/badge/Built%20with-AWS%20SAM-orange?logo=amazonaws)](https://aws.amazon.com/serverless/sam/)
 [![Python 3.11](https://img.shields.io/badge/Python-3.11-blue?logo=python)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+> 🚀 **Quick Links:**  
+> - 🌐 **Live Deployed App & API:** [`https://nkke7hhukj.execute-api.us-east-1.amazonaws.com/Prod/`](https://nkke7hhukj.execute-api.us-east-1.amazonaws.com/Prod/) *(Opens monitoring console in browser; returns status JSON in curl)*  
+> - 💻 **Local Monitoring Console:** Open [`fraud-detection-pipeline/frontend/index.html`](fraud-detection-pipeline/frontend/index.html) in your browser  
 
 ---
 
@@ -110,11 +116,20 @@ Financial institutions are required to detect and report suspicious transactions
 
 ```
 fraud-detection-pipeline/
-├── README.md
+├── README.md                                 # Comprehensive project documentation
+├── index.html                                # Root portal redirect
+│
 └── fraud-detection-pipeline/
-    ├── template.yml                          # SAM CloudFormation template (all resources)
-    ├── samconfig.toml                        # SAM CLI deployment config
-    ├── seed_data.py                          # Populate DynamoDB with test data
+    ├── template.yml                          # AWS SAM template (all resources, layers, alarms)
+    ├── samconfig.toml                        # SAM CLI deployment configuration
+    ├── seed_data.py                          # Script to populate DynamoDB with graph data
+    │
+    ├── model/                                # Machine Learning training subsystem
+    │   ├── train_model.py                    # XGBoost training pipeline on PaySim dataset
+    │   ├── build_layer.sh                    # Packages model & runtime into Lambda layer
+    │   ├── requirements-training.txt         # Training dependencies (xgboost, scikit-learn)
+    │   ├── artifacts/                        # Exported models (fraud_model.json, config)
+    │   └── data/                             # PaySim dataset download instructions
     │
     ├── src/
     │   ├── ingestion/                        # Lambda: API ingestion + alerts endpoint
@@ -124,17 +139,17 @@ fraud-detection-pipeline/
     │   ├── features/                         # Lambda: Graph feature extraction
     │   │   └── app.py                        #   1-hop neighborhood + pair queries
     │   │
-    │   ├── scoring/                          # Lambda: Heuristic anomaly scoring
-    │   │   └── app.py                        #   Weighted composite score [0.0–1.0]
+    │   ├── scoring/                          # Lambda: Hybrid ML + Graph anomaly scoring
+    │   │   └── app.py                        #   XGBoost inference + graph heuristics
     │   │
     │   └── explanation/                      # Lambda: Bedrock AI explanation
     │       └── app.py                        #   Nova Pro structured risk narrative
     │
     ├── statemachine/
-    │   └── fraud_detection_workflow.asl.json  # Step Functions ASL definition
+    │   └── fraud_detection_workflow.asl.json  # Step Functions Express workflow definition
     │
     ├── frontend/
-    │   └── index.html                        # Full monitoring console + transaction simulator
+    │   └── index.html                        # Executive monitoring console & simulator
     │
     ├── dashboard/
     │   └── index.html                        # Minimal alert stream dashboard
@@ -196,15 +211,15 @@ Outputs
 -----------------------------------------------------------
 Key                 TransactionApiUrl
 Description         API Gateway endpoint URL for Prod stage
-Value               https://<api-id>.execute-api.us-east-1.amazonaws.com/Prod/transactions
+Value               https://nkke7hhukj.execute-api.us-east-1.amazonaws.com/Prod/transactions
 
 Key                 AlertsApiUrl
 Description         Endpoint URL to fetch recent flagged transactions
-Value               https://<api-id>.execute-api.us-east-1.amazonaws.com/Prod/alerts
+Value               https://nkke7hhukj.execute-api.us-east-1.amazonaws.com/Prod/alerts
 
 Key                 ComplianceTopicArn
 Description         ARN for the SNS Compliance Alerts Topic
-Value               arn:aws:sns:us-east-1:<account-id>:AML-Compliance-Alerts
+Value               arn:aws:sns:us-east-1:348577536830:AML-Compliance-Alerts
 -----------------------------------------------------------
 ```
 
@@ -373,12 +388,25 @@ The Step Functions Express Workflow executes **synchronously** with the followin
 
 ---
 
-## Scoring Algorithm
+## Scoring Algorithm: Hybrid ML + Graph Ensemble
 
-The `GraphAnomalyScoringFunction` computes a **weighted composite anomaly score** in the range `[0.0, 1.0]`:
+The `GraphAnomalyScoringFunction` employs a **hybrid ensemble architecture** combining a supervised gradient-boosted machine learning model with real-time graph topology heuristics:
 
 ```
-Score = (Structuring × 0.45) + (Velocity × 0.25) + (Diversity × 0.20) + (Amount Deviation × 0.10)
+Final Anomaly Score = (0.70 × ML Model Probability) + (0.30 × Graph Heuristic Score)
+```
+
+### 1. Machine Learning Engine (XGBoost)
+- **Model:** Gradient Boosted Decision Trees trained via `model/train_model.py` on the PaySim synthetic mobile-money dataset (554,082 test transactions).
+- **Performance:** **0.999 AUC-ROC**, **0.9982 AUC-PR**, and **0.9939 F1-score** on fraudulent transactions.
+- **Features (24 total):** 6 PaySim core transaction attributes, 10 engineered balance delta & error variables (detecting balance drain and non-zero destination anomalies), and 8 graph-bridge features populated directly from DynamoDB queries.
+- **Serverless Optimization:** Serialized directly to lightweight JSON Booster format and packaged in a custom **AWS Lambda Layer** (`FraudModelLayer`), stubbing non-essential dependencies to achieve sub-50ms inference.
+
+### 2. Graph Heuristic Engine (DynamoDB Topology)
+Computes structural risk across the transaction's 1-hop neighborhood and counterparty history:
+
+```
+Graph Score = (Structuring × 0.45) + (Velocity × 0.25) + (Diversity × 0.20) + (Amount Deviation × 0.10)
 ```
 
 | Component | Weight | Calculation | Detects |
@@ -388,7 +416,11 @@ Score = (Structuring × 0.45) + (Velocity × 0.25) + (Diversity × 0.20) + (Amou
 | **Diversity** | 20% | `1.0 - (unique_counterparties / out_degree)` | Low counterparty diversity (concentration risk) |
 | **Amount Deviation** | 10% | `min(max((amount/avg - 1) / 2, 0), 1.0)` | Unusual transaction amounts vs. sender history |
 
-**Threshold:** Transactions scoring **≥ 0.70** are flagged for compliance review.
+**Triage Decisioning:**
+A transaction is flagged for compliance review (`status: FLAGGED`, `action: HOLD_FOR_COMPLIANCE`) if:
+1. The **composite score** $\ge$ **0.70**, OR
+2. The **XGBoost ML model** indicates extreme fraud probability ($\ge$ **0.50**), OR
+3. The **Graph structuring heuristic** identifies severe cluster anomalies ($\ge$ **0.70**).
 
 ---
 

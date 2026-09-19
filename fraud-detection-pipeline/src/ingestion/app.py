@@ -59,8 +59,11 @@ def persist_transaction_graph(txn_id, sender_id, receiver_id, amount, currency, 
 def lambda_handler(event, context):
     try:
         http_method = event.get("httpMethod")
+        path = event.get("path", "")
         if http_method == "GET":
-            return handle_get_alerts()
+            if path.rstrip("/").endswith("/alerts"):
+                return handle_get_alerts()
+            return handle_get_root(event)
 
         raw_body = event.get("body") or "{}"
         body = json.loads(raw_body)
@@ -78,7 +81,12 @@ def lambda_handler(event, context):
             "receiverId": receiver_id,
             "amount": amount,
             "currency": currency,
-            "timestamp": timestamp
+            "timestamp": timestamp,
+            "oldbalanceOrg": body.get("oldbalanceOrg", 0.0),
+            "newbalanceOrig": body.get("newbalanceOrig", 0.0),
+            "oldbalanceDest": body.get("oldbalanceDest", 0.0),
+            "newbalanceDest": body.get("newbalanceDest", 0.0),
+            "transactionTypeNumeric": body.get("transactionTypeNumeric", 4)
         }
 
         # 1. Run Step Functions Express Workflow
@@ -122,6 +130,9 @@ def lambda_handler(event, context):
                 "decision": decision,
                 "score": output.get("score"),
                 "flagged": output.get("flagged"),
+                "scoring_method": output.get("scoring_method"),
+                "ml_score": output.get("ml_score"),
+                "graph_score": output.get("graph_score"),
                 "explanation": output.get("explanation")
             })
         }
@@ -155,4 +166,53 @@ def handle_get_alerts():
             "Access-Control-Allow-Origin": "*"
         },
         "body": json.dumps(items)
+    }
+
+
+def handle_get_root(event):
+    """Handles GET /: serves monitoring HTML console in browser, or API JSON metadata for API clients."""
+    headers = {str(k).lower(): str(v) for k, v in (event.get("headers") or {}).items()}
+    accept = headers.get("accept", "")
+
+    html_path = os.path.join(os.path.dirname(__file__), "console.html")
+    if "text/html" in accept and os.path.exists(html_path):
+        with open(html_path, "r", encoding="utf-8") as f:
+            html_content = f.read()
+        return {
+            "statusCode": 200,
+            "headers": {
+                "Content-Type": "text/html; charset=utf-8",
+                "Access-Control-Allow-Origin": "*",
+                "Cache-Control": "no-cache"
+            },
+            "body": html_content
+        }
+
+    return {
+        "statusCode": 200,
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+        },
+        "body": json.dumps({
+            "service": "SentinelAML",
+            "status": "ONLINE",
+            "version": "1.0.0",
+            "region": os.environ.get("AWS_REGION", "us-east-1"),
+            "description": "Real-Time Serverless Graph & ML Anti-Money Laundering Detection Pipeline",
+            "endpoints": {
+                "transactions": {
+                    "method": "POST",
+                    "path": "/transactions",
+                    "description": "Submit a transaction for sub-second fraud evaluation"
+                },
+                "alerts": {
+                    "method": "GET",
+                    "path": "/alerts",
+                    "description": "Query recent flagged transactions from DynamoDB StatusIndex"
+                }
+            },
+            "console": "Visit this URL directly in any web browser to open the interactive SentinelAML Monitoring Console",
+            "repository": "https://github.com/lo1734/fraud-detection-pipeline"
+        }, indent=2)
     }

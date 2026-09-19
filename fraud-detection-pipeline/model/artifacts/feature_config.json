@@ -1,0 +1,42 @@
+{
+  "feature_names": [
+    "type_encoded",
+    "amount",
+    "oldbalanceOrg",
+    "newbalanceOrig",
+    "oldbalanceDest",
+    "newbalanceDest",
+    "balance_delta_orig",
+    "balance_delta_dest",
+    "error_balance_orig",
+    "error_balance_dest",
+    "amount_ratio_orig",
+    "amount_ratio_dest",
+    "is_orig_balance_zero",
+    "is_dest_balance_zero",
+    "hour_of_day",
+    "day_of_month",
+    "sender_out_degree",
+    "sender_avg_out_amount",
+    "sender_counterparty_diversity",
+    "receiver_in_degree",
+    "receiver_avg_in_amount",
+    "pair_tx_count",
+    "pair_total_volume",
+    "structuring_cluster_count"
+  ],
+  "type_mapping": {
+    "CASH_OUT": 0,
+    "TRANSFER": 1
+  },
+  "threshold": 0.5,
+  "ensemble_weight_ml": 0.7,
+  "ensemble_weight_graph": 0.3,
+  "metrics": {
+    "auc_roc": 0.999,
+    "auc_pr": 0.9982,
+    "f1_fraud": 0.9939,
+    "test_size": 554082,
+    "train_fraud_count": 220975
+  }
+}

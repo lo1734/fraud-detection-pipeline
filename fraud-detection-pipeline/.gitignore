@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# Large Datasets
+model/data/*.csv
+*.csv
+
+# Build Artifacts & Lambda Layer Packages
+.aws-sam/
+*.zip
+model/fraud-model-layer.zip
+model/layer/python/
+
+# IDE & OS
+.DS_Store
+.idea/
+.vscode/

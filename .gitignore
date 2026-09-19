@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+
+# Large Datasets & Raw Data
+*.csv
+paysim.csv
+model/data/*.csv
+fraud-detection-pipeline/model/data/*.csv
+
+# Build Artifacts & Lambda Layer Packages
+.aws-sam/
+fraud-detection-pipeline/.aws-sam/
+*.zip
+model/fraud-model-layer.zip
+fraud-detection-pipeline/model/fraud-model-layer.zip
+model/layer/python/
+fraud-detection-pipeline/model/layer/python/
+
+# Hackathon private submission notes
+HACKATHON_SUBMISSION.md
+SUBMISSION.md
+DEMO_VIDEO_SCRIPT.md
+
+# IDE & OS files
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+DEMO_VIDEO_SCRIPT.md
+HACKATHON_SUBMISSION.md
