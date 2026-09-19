@@ -150,7 +150,7 @@ fraud-detection-pipeline/
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/<your-username>/fraud-detection-pipeline.git
+git clone https://github.com/lo1734/fraud-detection-pipeline.git
 cd fraud-detection-pipeline/fraud-detection-pipeline
 ```
 
