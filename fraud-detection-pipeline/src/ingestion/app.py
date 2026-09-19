@@ -91,7 +91,7 @@ def lambda_handler(event, context):
         if status != "SUCCEEDED":
             return {
                 "statusCode": 500,
-                "headers": {"Content-Type": "application/json"},
+                "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
                 "body": json.dumps({
                     "error": "WorkflowExecutionFailed",
                     "status": status,
@@ -116,7 +116,7 @@ def lambda_handler(event, context):
 
         return {
             "statusCode": 200,
-            "headers": {"Content-Type": "application/json"},
+            "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
             "body": json.dumps({
                 "txnId": txn_id,
                 "decision": decision,
@@ -129,7 +129,7 @@ def lambda_handler(event, context):
     except Exception as e:
         return {
             "statusCode": 500,
-            "headers": {"Content-Type": "application/json"},
+            "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
             "body": json.dumps({"error": str(e)})
         }
 def handle_get_alerts():

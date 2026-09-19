@@ -20,15 +20,18 @@ def create_transaction_items(sender, receiver, amount, is_fraud=False):
     sorted_pair = "-".join(sorted([sender, receiver]))
 
     # 1. Canonical Record
+    status = "FLAGGED" if is_fraud else "COMPLETED"
     canonical = {
         "PK": f"TXN#{txn_id}",
-        "SK": "META",
+        "SK": "METADATA",
+        "GSI1PK": f"STATUS#{status}",
+        "GSI1SK": f"TIMESTAMP#{timestamp}",
         "senderId": sender,
         "receiverId": receiver,
         "amount": amount_str,
         "currency": "USD",
         "timestamp": timestamp,
-        "status": "COMPLETED",
+        "status": status,
         "is_synthetic_fraud": is_fraud  # Helpful flag for your demo
     }
 
@@ -39,6 +42,7 @@ def create_transaction_items(sender, receiver, amount, is_fraud=False):
         "counterpartyId": receiver,
         "direction": "OUT",
         "amount": amount_str,
+        "timestamp": timestamp,
         "GSI2PK": f"PAIR#{sorted_pair}",
         "GSI2SK": timestamp
     }
@@ -49,7 +53,10 @@ def create_transaction_items(sender, receiver, amount, is_fraud=False):
         "SK": f"EDGE#{timestamp}#{txn_id}",
         "counterpartyId": sender,
         "direction": "IN",
-        "amount": amount_str
+        "amount": amount_str,
+        "timestamp": timestamp,
+        "GSI2PK": f"PAIR#{sorted_pair}",
+        "GSI2SK": timestamp
     }
 
     return [canonical, outbound, inbound]

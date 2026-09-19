@@ -1,1 +1,27 @@
-{"txnId": "TEST_TXN", "senderId": "acc_user_999_FRAUD", "receiverId": "acc_merchant_999_FRAUD", "currentAmount": 9850.0, "features": {"sender_out_degree": 24, "sender_avg_out_amount": 9730.25, "sender_counterparty_diversity": 1, "receiver_in_degree": 24, "receiver_avg_in_amount": 9730.25, "pair_tx_count": 24, "pair_total_volume": 233525.92, "structuring_cluster_count": 24}, "score": 0.8923, "threshold": 0.7, "flagged": true, "subgraph_summary": "Sender acc_user_999_FRAUD has 24 out-edges with 1 unique counterparty. Pair history shows 24 transactions totaling $233,525.92, with 24 structuring transfers clustered below $10,000.", "explanation": {"risk_level": "HIGH", "summary": "Fallback alert: Anomaly score 0.8923 exceeded threshold 0.7. Sender acc_user_999_FRAUD has 24 out-edges with 1 unique counterparty. Pair history shows 24 transactions totaling $233,525.92, with 24 structuring transfers clustered below $10,000.", "key_indicators": [{"feature": "score", "value": "0.8923", "concern": "Exceeded rule threshold"}, {"feature": "structuring_cluster_count", "value": "24", "concern": "Multiple near-threshold transactions"}], "recommended_action": "REVIEW", "confidence": "MEDIUM", "fallback": true, "error": "An error occurred (ValidationException) when calling the InvokeModel operation: Operation not allowed"}}
+{"txnId": "TEST_TXN", "senderId": "acc_user_999_FRAUD", "receiverId": "acc_merchant_999_FRAUD",
+  "currentAmount": 9850.0, "features": {"sender_out_degree": 24, "sender_avg_out_amount": 9730.25,
+  "sender_counterparty_diversity": 1, "receiver_in_degree": 24, "receiver_avg_in_amount": 9730.25,
+  "pair_tx_count": 24, "pair_total_volume": 233525.92, "structuring_cluster_count": 24}, "score": 0.8923,
+  "threshold": 0.7, "flagged": true,
+  "subgraph_summary": "Sender acc_user_999_FRAUD has 24 out-edges with 1 unique counterparty. Pair history shows 24 transactions totaling $233,525.92, with 24 structuring transfers clustered below $10,000.",
+  "explanation": {
+    "risk_level": "HIGH",
+    "summary": "Fallback alert: Anomaly score 0.8923 exceeded threshold 0.7. Sender acc_user_999_FRAUD has 24 out-edges with 1 unique counterparty. Pair history shows 24 transactions totaling $233,525.92, with 24 structuring transfers clustered below $10,000.",
+    "key_indicators": [
+      {
+        "feature": "score",
+        "value": "0.8923",
+        "concern": "Exceeded rule threshold"
+      },
+      {
+        "feature": "structuring_cluster_count",
+        "value": "24",
+        "concern": "Multiple near-threshold transactions"
+      }
+    ],
+    "recommended_action": "REVIEW",
+    "confidence": "MEDIUM",
+    "fallback": true,
+    "error": "An error occurred (ValidationException) when calling the InvokeModel operation: Operation not allowed"
+  }
+}
