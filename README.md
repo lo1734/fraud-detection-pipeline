@@ -42,23 +42,34 @@ Financial institutions are required to detect and report suspicious transactions
 ## Architecture
 
 ```
-┌──────────────┐    ┌──────────────────┐    ┌─────────────────────────────────────────────────────────┐
-│   Frontend   │───▶│   API Gateway    │───▶│           Step Functions (Express Workflow)              │
-│  Dashboard   │    │  /transactions   │    │                                                         │
-└──────────────┘    │  /alerts (GET)   │    │  ┌─────────────┐  ┌──────────────┐  ┌───────────────┐   │
-                    └──────────────────┘    │  │  Feature     │  │  Graph       │  │  Bedrock      │   │
-                                           │  │  Extraction  │─▶│  Anomaly     │─▶│  Explanation  │   │
-                                           │  │  Lambda      │  │  Scoring     │  │  Lambda       │   │
-                                           │  └─────────────┘  └──────────────┘  └───────┬───────┘   │
-                                           │         │                                    │           │
-                                           └─────────┼────────────────────────────────────┼───────────┘
-                                                     │                                    │
-                                                     ▼                                    ▼
-                                           ┌──────────────────┐                 ┌──────────────────┐
-                                           │    DynamoDB       │                 │   SNS Topic      │
-                                           │  TransactionGraph │                 │  AML-Compliance  │
-                                           │  (Single Table)   │                 │  -Alerts         │
-                                           └──────────────────┘                 └──────────────────┘
+[Client / UI] ──POST /transactions──▶ [API Gateway] 
+                                            │
+                                            ▼
+                                [IngestionFunction]
+                                            │ (start_sync_execution)
+                                            ▼
+                           ┌── [Step Functions Express] ────────────────┐
+                           │                                            │
+                           │  1. FeatureExtractionFunction              │
+                           │     (Queries DynamoDB 1-hop & pair graph)  │
+                           │                    │                       │
+                           │  2. GraphAnomalyScoringFunction            │
+                           │     (Computes composite heuristic score)   │
+                           │                    │                       │
+                           │  3. CheckFlagged (Choice State)            │
+                           │     ├─ flagged=false ─▶ ApproveTransaction │
+                           │     └─ flagged=true                        │
+                           │            │                               │
+                           │     4. BedrockExplanationFunction          │
+                           │        (Amazon Nova Pro structured JSON)   │
+                           │            │                               │
+                           │     5. PublishComplianceAlert (SNS Topic)  │
+                           │            │                               │
+                           │     6. FlagForReview                       │
+                           └────────────────────┬───────────────────────┘
+                                                │
+       DynamoDB BatchWrite ◀────────────────────┘
+       (Canonical TXN + Sender & Receiver Edges)
 ```
 
 ---
